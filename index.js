@@ -9,94 +9,49 @@ app.get("/viyana", async (req, res) => {
     try {
         const url = "https://namazvakitleri.diyanet.gov.tr/tr-TR/11618/viyana-namaz-vakitleri";
         const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error("HTTP status " + response.status);
-        }
-
         const html = await response.text();
         const $ = cheerio.load(html);
+
         const result = {};
 
-        // Mümkün olduğunca genel ama mantıklı bir tablo seçimi:
-        // 1) İçinde "İmsak", "Güneş" vb geçen tabloyu bul
-        let targetTable = null;
+        // Bugünün tarihi (ör: 02.03.2026)
+        const today = new Date();
+        const gun = String(today.getDate()).padStart(2, "0");
+        const ay = String(today.getMonth() + 1).padStart(2, "0");
+        const yil = today.getFullYear();
+        const bugunTarih = `${gun}.${ay}.${yil}`;
 
-        $("table").each((i, table) => {
-            const text = $(table).text();
-            if (
-                text.includes("İmsak") &&
-                text.includes("Güneş") &&
-                text.includes("Öğle") &&
-                text.includes("İkindi") &&
-                text.includes("Akşam") &&
-                text.includes("Yatsı")
-            ) {
-                targetTable = table;
+        let todayRow = null;
+
+        // Tablodaki satırlarda bugünün tarihini ara
+        $("table tbody tr").each((i, row) => {
+            const rowText = $(row).text();
+            if (rowText.includes(bugunTarih)) {
+                todayRow = row;
             }
         });
 
-        if (!targetTable) {
-            throw new Error("Namaz vakitleri tablosu bulunamadı");
-        }
-
-        // Bugünün satırını bulmaya çalış
-        // 1) Önce "bugün" işaretli satır var mı diye bak (class vs.)
-        let todayRow = null;
-
-        $(targetTable)
-            .find("tbody tr")
-            .each((i, row) => {
-                const rowText = $(row).text();
-                // Çok kaba ama işe yarar bir yaklaşım:
-                // Satırda hem "İmsak" hem de saat formatı varsa, muhtemelen günlük satırdır
-                if (
-                    rowText.includes("İmsak") ||
-                    rowText.includes("Sabah") ||
-                    rowText.includes("Güneş")
-                ) {
-                    todayRow = row;
-                }
-            });
-
-        // Eğer böyle bir satır bulamazsak, fallback: ilk satır
         if (!todayRow) {
-            todayRow = $(targetTable).find("tbody tr").first();
-        }
-
-        if (!todayRow || $(todayRow).length === 0) {
             throw new Error("Bugünün satırı bulunamadı");
         }
 
-        // Şimdi bu satırdan vakitleri çek
-        // Varsayım: satırda "İmsak, Güneş, Öğle, İkindi, Akşam, Yatsı" kolonları var
+        // Başlıkları al
         const headers = [];
-        $(targetTable)
-            .find("thead tr th")
-            .each((i, th) => {
-                headers.push($(th).text().trim());
-            });
+        $("table thead tr th").each((i, th) => {
+            headers.push($(th).text().trim());
+        });
 
+        // Bugünün satırındaki kolonları al
         const cols = $(todayRow).find("td");
-        if (cols.length === 0) {
-            throw new Error("Bugün satırında kolon yok");
-        }
 
         cols.each((i, col) => {
             const header = headers[i] || "";
             const value = $(col).text().trim();
 
-            if (
-                header &&
-                /^[0-9]{1,2}:[0-9]{2}$/.test(value)
-            ) {
+            if (/^[0-9]{1,2}:[0-9]{2}$/.test(value)) {
                 result[header] = value;
             }
         });
-
-        if (Object.keys(result).length === 0) {
-            throw new Error("Hiçbir vakit parse edilemedi");
-        }
 
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.json(result);
