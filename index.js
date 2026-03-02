@@ -12,7 +12,6 @@ app.get("/viyana", async (req, res) => {
         const html = await response.text();
 
         const $ = cheerio.load(html);
-
         const result = {};
 
         $("table tbody tr").each((i, row) => {
