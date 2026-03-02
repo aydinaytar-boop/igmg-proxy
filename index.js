@@ -8,25 +8,22 @@ const PORT = process.env.PORT || 3000;
 app.get("/viyana", async (req, res) => {
     try {
         const url = "https://www.derislam.at/gebetszeiten";
-        const response = await fetch(url);
-        const html = await response.text();
+        const response = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+        });
 
+        const html = await response.text();
         const $ = cheerio.load(html);
         const result = {};
 
         $("table tr").each((i, row) => {
             const cols = $(row).find("td");
-
             if (cols.length >= 2) {
                 const name = $(cols[0]).text().trim();
                 const time = $(cols[1]).text().trim();
-
-                // Sadece namaz vakti olan satırları al
-                if (
-                    name &&
-                    time &&
-                    /^[0-9]{1,2}:[0-9]{2}$/.test(time)
-                ) {
+                if (/^[0-9]{1,2}:[0-9]{2}$/.test(time)) {
                     result[name] = time;
                 }
             }
