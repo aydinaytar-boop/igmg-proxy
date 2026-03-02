@@ -14,11 +14,22 @@ app.get("/viyana", async (req, res) => {
         const $ = cheerio.load(html);
         const result = {};
 
-        $("table tbody tr").each((i, row) => {
+        $("table tr").each((i, row) => {
             const cols = $(row).find("td");
-            const name = $(cols[0]).text().trim();
-            const time = $(cols[1]).text().trim();
-            result[name] = time;
+
+            if (cols.length >= 2) {
+                const name = $(cols[0]).text().trim();
+                const time = $(cols[1]).text().trim();
+
+                // Sadece namaz vakti olan satırları al
+                if (
+                    name &&
+                    time &&
+                    /^[0-9]{1,2}:[0-9]{2}$/.test(time)
+                ) {
+                    result[name] = time;
+                }
+            }
         });
 
         res.setHeader("Access-Control-Allow-Origin", "*");
