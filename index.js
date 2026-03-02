@@ -1,5 +1,5 @@
 const express = require("express");
-const fetch = require("node-fetch");
+const cloudscraper = require("cloudscraper");
 const cheerio = require("cheerio");
 
 const app = express();
@@ -8,13 +8,10 @@ const PORT = process.env.PORT || 3000;
 app.get("/viyana", async (req, res) => {
     try {
         const url = "https://www.derislam.at/gebetszeiten";
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-            }
-        });
 
-        const html = await response.text();
+        // Cloudflare bypass
+        const html = await cloudscraper.get(url);
+
         const $ = cheerio.load(html);
         const result = {};
 
@@ -23,6 +20,7 @@ app.get("/viyana", async (req, res) => {
             if (cols.length >= 2) {
                 const name = $(cols[0]).text().trim();
                 const time = $(cols[1]).text().trim();
+
                 if (/^[0-9]{1,2}:[0-9]{2}$/.test(time)) {
                     result[name] = time;
                 }
