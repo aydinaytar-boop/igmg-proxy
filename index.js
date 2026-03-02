@@ -5,6 +5,12 @@ const cheerio = require("cheerio");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Türkçe ay adları
+const aylar = [
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+];
+
 app.get("/viyana", async (req, res) => {
     try {
         const url = "https://namazvakitleri.diyanet.gov.tr/tr-TR/11618/viyana-namaz-vakitleri";
@@ -14,19 +20,19 @@ app.get("/viyana", async (req, res) => {
 
         const result = {};
 
-        // Bugünün tarihi (ör: 02.03.2026)
-        const today = new Date();
-        const gun = String(today.getDate()).padStart(2, "0");
-        const ay = String(today.getMonth() + 1).padStart(2, "0");
-        const yil = today.getFullYear();
-        const bugunTarih = `${gun}.${ay}.${yil}`;
+        // Bugünün tarihi (ör: "02 Mart 2026")
+        const now = new Date();
+        const gun = String(now.getDate()).padStart(2, "0");
+        const ay = aylar[now.getMonth()];
+        const yil = now.getFullYear();
+        const bugun = `${gun} ${ay} ${yil}`;
 
         let todayRow = null;
 
         // Tablodaki satırlarda bugünün tarihini ara
-        $("table tbody tr").each((i, row) => {
-            const rowText = $(row).text();
-            if (rowText.includes(bugunTarih)) {
+        $("table.vakit-table tbody tr").each((i, row) => {
+            const tarih = $(row).find("td").first().text().trim();
+            if (tarih.includes(bugun)) {
                 todayRow = row;
             }
         });
@@ -35,23 +41,14 @@ app.get("/viyana", async (req, res) => {
             throw new Error("Bugünün satırı bulunamadı");
         }
 
-        // Başlıkları al
-        const headers = [];
-        $("table thead tr th").each((i, th) => {
-            headers.push($(th).text().trim());
-        });
-
-        // Bugünün satırındaki kolonları al
         const cols = $(todayRow).find("td");
 
-        cols.each((i, col) => {
-            const header = headers[i] || "";
-            const value = $(col).text().trim();
-
-            if (/^[0-9]{1,2}:[0-9]{2}$/.test(value)) {
-                result[header] = value;
-            }
-        });
+        result["İmsak"] = $(cols[2]).text().trim();
+        result["Güneş"] = $(cols[3]).text().trim();
+        result["Öğle"] = $(cols[4]).text().trim();
+        result["İkindi"] = $(cols[5]).text().trim();
+        result["Akşam"] = $(cols[6]).text().trim();
+        result["Yatsı"] = $(cols[7]).text().trim();
 
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.json(result);
